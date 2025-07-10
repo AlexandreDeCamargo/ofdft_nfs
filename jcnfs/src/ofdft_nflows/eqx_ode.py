@@ -1,0 +1,139 @@
+from diffrax import diffeqsolve, ODETerm, SaveAt, PIDController
+import jax 
+import jax.numpy as jnp
+import functools
+from functools import partial
+
+@functools.partial(jax.vmap, in_axes=(None,0,0), out_axes=0)
+def forward(model,x,t):
+  return model(x,t)
+
+def fwd_ode(flow_model,x_and_logpx,solver):
+    """
+    Solves the forward ordinary differential equation (ODE) defined by a continuous normalizing flow (CNF)
+    with score function tracking. Computes the state trajectory, log-probability, and score terms from 
+    time t=0 to t=1 using an adaptive-step ODE solver.
+
+    Parameters
+    ----------
+    vector_field : Callable[[float, jax.array, Any], jax.array]
+        Function that defines the ODE dynamics. Expected signature:
+        `f(t, x, args) -> dx/dt` where:
+        - t: float representing time
+        - x: jax.array representing the state (position + logp + score)
+        - args: Additional arguments (not used here)
+        Returns the time derivative of the state
+    
+    flow_model :
+        The continuous normalizing flow model that defines the vector field.
+        Expected to be an instance of `CNF` which contains:
+        - A Radial_MLP as its flow component
+        - Implements __call__ that returns the combined dynamics of position, log-probability, and score
+    x_and_logpx : jax.array
+        Initial state concatenated with log-probability and score terms.
+        Expected shape: (batch_size, data_dim + 1 + data_dim) where:
+        - First data_dim (3) dimensions: Position state (x)
+        - Next 1 dimension: Log-probability term (log_px)
+        - Last data_dim (3) dimensions: Score term
+    solver :
+        The ODE solver to use for integration (see available solvers in Notes)
+
+    Returns
+    -------
+    Tuple[jax.array, jax.array, jax.array]
+        A tuple containing three arrays:
+        - z_t1: Final positions at t=1 (shape: (batch_size, 3))
+        - logp_diff_t1: Final log-probability differences at t=1 (shape: (batch_size, 1))
+        - score_t1: Final score terms at t=1 (shape: (batch_size, 3))
+
+    Notes
+    -----
+    - Check the ode solvers available at https://docs.kidger.site/diffrax/api/solvers/ode_solvers/
+    - Employs adaptive step size control with relative and absolute tolerances of 1e-6
+    - The vector field is computed using the `forward` function which vmaps the flow model's __call__
+    - Solves the ODE from fixed time t=0 to t=1
+    - The data dimension is fixed at 3 (for 3D position space)
+    """
+    t0 = 0.
+    t1 = 1.
+    dt0 = t1 - t0
+  
+    vector_field = lambda t,x,args: forward(flow_model,x,t*jnp.ones((x.shape[0],1)))
+    term = ODETerm(vector_field)
+    solver = solver
+    saveat = SaveAt(ts=jnp.array([0.,1.]))
+    stepsize_controller=PIDController(rtol=1e-6, atol=1e-6)
+
+    sol = diffeqsolve(term, solver, t0, t1, dt0, x_and_logpx,
+                    stepsize_controller=stepsize_controller,
+                    saveat=saveat)
+    data_dim = 3
+    z_t, logp_diff_t, score_t = sol.ys[:, :,
+                                        :data_dim], sol.ys[:, :, data_dim:data_dim+1],sol.ys[:, :, data_dim+1:]
+    z_t1, logp_diff_t1, score_t1 = z_t[-1], logp_diff_t[-1], score_t[-1]
+
+    return z_t1, logp_diff_t1, score_t1
+
+def rev_ode(vector_field, flow_model, z_and_logpz, solver):
+    """
+    Solves the reverse ordinary differential equation (ODE) defined by a continuous normalizing flow (CNF).
+    Computes the backward state trajectory and log-probability terms from time t=1 to t=0 using an 
+    adaptive-step ODE solver.
+
+    Parameters
+    ----------
+    vector_field : Callable[[float, jax.array, Any], jax.array]
+        Function that defines the ODE dynamics (same as forward pass). Expected signature:
+        `f(t, x, args) -> dx/dt` where:
+        - t: float representing time
+        - x: jax.array representing the state (position + logp)
+        - args: Additional arguments (not used here)
+        Returns the time derivative of the state. Note: Uses same dynamics as forward pass
+        but integrated backward in time
+    flow_model :
+        The continuous normalizing flow model that defines the vector field.
+        Expected to be an instance of `CNF` which contains:
+        - A Radial_MLP as its flow component
+        - Implements __call__ that returns the combined dynamics of position and log-probability
+    z_and_logpz : jax.array
+        Final state concatenated with log-probability terms.
+        Expected shape: (batch_size, data_dim + 1) where:
+        - First data_dim (3) dimensions: Position state (z)
+        - Next 1 dimension: Log-probability term (log_pz)
+    solver :
+        The ODE solver to use for integration (see available solvers in Notes)
+
+    Returns
+    -------
+    Tuple[jax.array, jax.array]
+        A tuple containing two arrays:
+        - x_t0: Initial positions at t=0 (shape: (batch_size, 3))
+        - logp_diff_t0: Initial log-probability differences at t=0 (shape: (batch_size, 1))
+
+    Notes
+    -----
+    - Check the ode solvers available at https://docs.kidger.site/diffrax/api/solvers/ode_solvers/
+    - Employs adaptive step size control with relative and absolute tolerances of 1e-6
+    - The vector field is computed using the `forward` function which vmaps the flow model's __call__
+    - Solves the ODE in reverse time from t=1 to t=0
+    - The data dimension is fixed at 3 (for 3D position space)
+    - This function is typically used for density estimation by reversing the flow transformation
+    """
+    t0 = 0.
+    t1 = 1.
+    dt0 = t1 - t0
+  
+    vector_field = vector_field
+    term = ODETerm(vector_field)
+    solver = solver
+    saveat = SaveAt(ts=jnp.array([1., 0.]))
+    stepsize_controller = PIDController(rtol=1e-6, atol=1e-6)
+
+    sol = diffeqsolve(term, solver, t1, t0, -dt0, z_and_logpz,
+                     stepsize_controller=stepsize_controller,
+                     saveat=saveat)
+    data_dim = 3
+    z_t, logp_diff_t, _ = sol.ys[:, :, :data_dim], sol.ys[:, :, data_dim:data_dim+1], sol.ys[:, :, data_dim+1:]
+    z_t0, logp_diff_t0 = z_t[-1], logp_diff_t[-1]
+
+    return z_t0, logp_diff_t0

@@ -1,0 +1,109 @@
+import equinox as eqx
+
+from ofdft_nflows.equiv_flows import CNF
+
+
+def grad_loss(model, z_and_logpz):
+  x, log_px, _score = fwd_ode(model, z_and_logpz)
+  # print(x.shape)
+  # print(log_px.shape)
+  # print(_score.shape)
+  # assert 0
+  bs = int(x.shape[0]/2)
+  den_all, x_all,score_all = jnp.exp(log_px), x, _score
+  score, scorep = score_all[:bs], score_all[bs:]
+  den, denp = den_all[:bs], den_all[bs:]
+  x, xp = x_all[:bs], x_all[bs:]
+
+  # evaluate all the functionals locally F[x_i, \rho(x_i)]
+  e_t = thomas_fermi(den,Ne) + weizsacker(den, score, Ne)
+  e_h = Nuclei_potential(x, Ne, mol)
+  e_nuc_v = Hartree_potential(x, xp,Ne)
+  # e_xc = correlation_vwn_c_e(den, Ne)
+  e_xc = Dirac_exchange(den,Ne) + b88_x_e(den, score, Ne) + correlation_vwn_c_e(den, Ne) 
+
+  e = e_t + e_nuc_v + e_h + e_xc
+
+  energy = jnp.mean(e)
+
+  f_values = F_values(energy=energy,
+                            kin=jnp.mean(e_t),
+                            vnuc=jnp.mean(e_nuc_v),
+                            hart=jnp.mean(e_h),
+                            xc = jnp.mean(e_xc)
+                            )
+
+  return energy, f_values
+
+@eqx.filter_jit
+def train_step(flow_model, optimizer_state, x_and_logpx):
+    # Compute loss and gradients
+    loss, grads = eqx.filter_value_and_grad(grad_loss, has_aux=True)(flow_model, x_and_logpx)
+
+    # Update the model parameters
+    updates, optimizer_state = optimizer.update(grads, optimizer_state,flow_model)
+    flow_model = eqx.apply_updates(flow_model, updates)
+
+    return loss, flow_model, optimizer_state
+batch_size = 512
+data_dim = 3
+# flow_model = CNFwScore(data_dim, batch_size, key)
+flow_model = CNF(data_dim,batch_size,mu,one_hot,key)
+# Define the optimizer
+# lr = optax.exponential_decay(3e-4, transition_steps=1, decay_rate=0.95)
+lr = 3e-4
+epochs = 1000
+_lr = optax.warmup_cosine_decay_schedule(
+                init_value=lr,
+                peak_value=lr,
+                warmup_steps=150,
+                decay_steps=epochs,
+                end_value=1E-5,
+            )
+optimizer = optax.chain(
+    optax.clip_by_global_norm(1.0),
+    optax.adamw(lr, weight_decay=1e-5)
+)
+optimizer_state = optimizer.init(eqx.filter(flow_model, eqx.is_array))
+# base_dist = distrax.MultivariateNormalDiag(jnp.zeros(3), 1.*jnp.ones(3))
+mean = jnp.zeros((3,))
+cov = jnp.ones((3,))
+base_dist = MultivariateNormalDiag(mean, cov)
+# prior_dist = MultivariateNormalDiag(jnp.zeros(1), 1.*jnp.ones(1))
+
+gen_batches = batch_generator(key, batch_size, base_dist)
+# Training loop
+key = jax.random.PRNGKey(0)
+for itr in range(500):
+    key, subkey = jax.random.split(key)
+    _,key = jrnd.split(key)
+    batch = next(gen_batches)
+
+    # Perform a training step
+    loss, flow_model, optimizer_state = train_step(flow_model, optimizer_state, batch)
+    loss_epoch, losses = loss
+    energies_i_ema, energies_state = energies_ema.update(
+            losses, energies_state)
+    ei_ema = energies_i_ema.energy
+
+    r_ema = {'epoch': itr,
+                 'E': energies_i_ema.energy,
+                 'T': energies_i_ema.kin, 'V': energies_i_ema.vnuc, 'H': energies_i_ema.hart
+
+                 }
+    print( r_ema)
+    # xt = jnp.linspace(-4.5, 4.5, 1000)
+    # yz = jnp.zeros((xt.shape[0], 2))
+    # zt = lax.concatenate((yz, xt[:, None]), 1)
+    # rho_true_1d = m.prob(m, zt)
+    # rho_predicted_1d = rho_(flow_model, zt)
+    # fig, ax = plt.subplots()
+    # ax.plot(xt, rho_true_1d, label='Exact Density')
+    # ax.plot(xt, Ne*rho_predicted_1d, label='Predicted Density')
+    # ax.plot(xt, Ne*rho_predicted_1d[::-1], label='Predicted Density')
+    # ax.set_title('Exact vs. Predicted 1D Density along Z-axis')
+    # ax.set_xlabel('Z-axis [Bohr]')
+    # ax.set_ylabel('Density')
+    # ax.legend()
+    # plt.show()
+    # plt.close(fig)

@@ -1,0 +1,67 @@
+absl-py==2.3.0
+asttokens @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_11i8cnwuxs/croot/asttokens_1743630449718/work
+attrs==25.3.0
+chex==0.1.89
+cloudpickle==3.1.1
+contourpy==1.3.2
+cycler==0.12.1
+decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
+diffrax==0.7.0
+distrax==0.1.5
+dm-tree==0.1.9
+equinox==0.12.2
+etils==1.12.2
+executing @ file:///opt/conda/conda-bld/executing_1646925071911/work
+flax==0.10.6
+fonttools==4.58.4
+fsspec==2025.5.1
+gast==0.6.0
+humanize==4.12.3
+importlib_resources==6.5.2
+ipython @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_c8ho0txsdd/croot/ipython_1744912974542/work
+ipython_pygments_lexers @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_25fteymumy/croot/ipython_pygments_lexers_1744753256449/work
+jax==0.6.1
+jaxlib==0.6.1
+jaxtyping==0.3.2
+jedi @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_38ctoinnl0/croot/jedi_1733987402850/work
+kiwisolver==1.4.8
+lineax==0.0.8
+markdown-it-py==3.0.0
+matplotlib==3.10.3
+matplotlib-inline @ file:///Users/cbousseau/work/recipes/ci_py311/matplotlib-inline_1677918241899/work
+mdurl==0.1.2
+ml_dtypes==0.5.1
+msgpack==1.1.1
+nest-asyncio==1.6.0
+numpy==2.3.0
+opt_einsum==3.4.0
+optax==0.2.5
+optimistix==0.0.10
+orbax-checkpoint==0.11.15
+packaging==25.0
+parso @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_8824a1w4md/croot/parso_1733963320105/work
+pexpect @ file:///tmp/build/80754af9/pexpect_1605563209008/work
+pillow==11.2.1
+prompt-toolkit @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_c63v4kqjzr/croot/prompt-toolkit_1704404354115/work
+protobuf==6.31.1
+ptyprocess @ file:///tmp/build/80754af9/ptyprocess_1609355006118/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl
+pure-eval @ file:///opt/conda/conda-bld/pure_eval_1646925070566/work
+Pygments @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_f0f10r98sf/croot/pygments_1744664126614/work
+pyparsing==3.2.3
+python-dateutil==2.9.0.post0
+PyYAML==6.0.2
+rich==14.0.0
+scipy==1.15.3
+simplejson==3.20.1
+six==1.17.0
+stack-data @ file:///opt/conda/conda-bld/stack_data_1646927590127/work
+tensorflow-probability==0.25.0
+tensorstore==0.1.75
+toolz==1.0.0
+traitlets @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_500m2_1wyk/croot/traitlets_1718227071952/work
+treescope==0.1.9
+typing_extensions @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_0b3jpv_f79/croot/typing_extensions_1734714864260/work
+wadler_lindig==0.1.6
+wcwidth @ file:///Users/ktietz/demo/mc3/conda-bld/wcwidth_1629357192024/work
+wrapt==1.17.2
+zipp==3.23.0
