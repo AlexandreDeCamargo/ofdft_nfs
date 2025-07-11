@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Literal, Union
 from functools import partial
 
 import jax
@@ -13,9 +13,31 @@ from pyscf.data.nist import BOHR
 
 import optax
 
+from diffrax import (
+    Euler, Heun, Midpoint, Ralston, Bosh3, Tsit5, Dopri5, Dopri8,
+    ImplicitEuler, Kvaerno3, Kvaerno4, Kvaerno5, Sil3,
+    KenCarp3, KenCarp4, KenCarp5, SemiImplicitEuler,
+    ReversibleHeun, LeapfrogMidpoint
+)
+
 Dtype = Any
 
-@partial(jit,  static_argnums=(2,))
+SolverType = Literal[
+    'euler', 'heun', 'midpoint', 'ralston', 'bosh3',
+    'tsit5', 'dopri5', 'dopri8', 'implicit_euler',
+    'kvaerno3', 'kvaerno4', 'kvaerno5', 'sil3',
+    'ken_carp3', 'ken_carp4', 'ken_carp5',
+    'semi_implicit_euler', 'reversible_heun',
+    'leapfrog_midpoint'
+]
+
+@partial(jit, static_argnums=(2,))
+def compute_integral(params: Any, grid_array: Any, rho: Any, Ne: int):
+    grid_coords, grid_weights = grid_array
+    rho_val = Ne*rho(params, grid_coords)
+    return jnp.vdot(grid_weights, rho_val)
+
+@partial(jit, static_argnums=(2,))
 def laplacian(params: Any, X: Array, fun: callable) -> jax.Array:
     """_summary_
 
@@ -161,7 +183,7 @@ def get_scheduler(epochs: int, sched_type: str = 'zero', lr: float = 3E-4):
             return optax.warmup_cosine_decay_schedule(
                 init_value=lr,
                 peak_value=lr,
-                warmup_steps=150,
+                warmup_steps=150, 
                 decay_steps=epochs,
                 end_value=1E-5,
             )
@@ -169,7 +191,7 @@ def get_scheduler(epochs: int, sched_type: str = 'zero', lr: float = 3E-4):
             init_scheduler_min = optax.warmup_cosine_decay_schedule(
                 init_value=lr,
                 peak_value=lr,
-                warmup_steps=150,
+                warmup_steps=25,
                 decay_steps=int(2*epochs/3),
                 end_value=1E-6,
             )
@@ -183,6 +205,50 @@ def get_scheduler(epochs: int, sched_type: str = 'zero', lr: float = 3E-4):
             constant_scheduler_max = optax.constant_schedule(1E-5)
             return optax.join_schedules([constant_scheduler_min, cosine_decay_scheduler,
                                         constant_scheduler_max], boundaries=[epochs/4, 2*epochs/4])
+
+def get_solver(solver_type: SolverType, **solver_kwargs) -> Union[
+    Euler, Heun, Midpoint, Ralston, Bosh3, Tsit5, Dopri5, Dopri8,
+    ImplicitEuler, Kvaerno3, Kvaerno4, Kvaerno5, Sil3,
+    KenCarp3, KenCarp4, KenCarp5, SemiImplicitEuler,
+    ReversibleHeun, LeapfrogMidpoint
+]:
+    """Factory function to create Diffrax solvers based on string input.
+    
+    Args:
+        solver_type: Name of the solver to instantiate
+        **solver_kwargs: Additional arguments to pass to the solver
+        
+    Returns:
+        The requested Diffrax solver instance
+    """
+    solver_map = {
+        'euler': Euler,
+        'heun': Heun,
+        'midpoint': Midpoint,
+        'ralston': Ralston,
+        'bosh3': Bosh3,
+        'tsit5': Tsit5,
+        'dopri5': Dopri5,
+        'dopri8': Dopri8,
+        'implicit_euler': ImplicitEuler,
+        'kvaerno3': Kvaerno3,
+        'kvaerno4': Kvaerno4,
+        'kvaerno5': Kvaerno5,
+        'sil3': Sil3,
+        'ken_carp3': KenCarp3,
+        'ken_carp4': KenCarp4,
+        'ken_carp5': KenCarp5,
+        'semi_implicit_euler': SemiImplicitEuler,
+        'reversible_heun': ReversibleHeun,
+        'leapfrog_midpoint': LeapfrogMidpoint
+    }
+    
+    solver_class = solver_map.get(solver_type.lower())
+    if solver_class is None:
+        raise ValueError(f"Unknown solver type: {solver_type}. "
+                       f"Available options: {list(solver_map.keys())}")
+    
+    return solver_class(**solver_kwargs)
         
 def correlation_polarization_correction(
     e_tilde_PF: float, 

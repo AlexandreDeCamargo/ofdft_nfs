@@ -74,7 +74,7 @@ def fwd_ode(flow_model,x_and_logpx,solver):
 
     return z_t1, logp_diff_t1, score_t1
 
-def rev_ode(vector_field, flow_model, z_and_logpz, solver):
+def rev_ode(flow_model, z_and_logpz, solver):
     """
     Solves the reverse ordinary differential equation (ODE) defined by a continuous normalizing flow (CNF).
     Computes the backward state trajectory and log-probability terms from time t=1 to t=0 using an 
@@ -123,7 +123,7 @@ def rev_ode(vector_field, flow_model, z_and_logpz, solver):
     t1 = 1.
     dt0 = t1 - t0
   
-    vector_field = vector_field
+    vector_field = lambda t,x,args: forward(flow_model,x,t*jnp.ones((x.shape[0],1)))
     term = ODETerm(vector_field)
     solver = solver
     saveat = SaveAt(ts=jnp.array([1., 0.]))

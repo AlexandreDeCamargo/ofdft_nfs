@@ -18,6 +18,8 @@ from distrax import MixtureSameFamily, MultivariateNormalDiag, Categorical
 from distrax._src.distributions import distribution
 from distrax._src.distributions.distribution import Array
 
+Dtype = Any
+
 class MixGaussian(distrax.Distribution):
   def __init__(self, loc: Array , scale_diag: Array , probs: Array):
     r"""

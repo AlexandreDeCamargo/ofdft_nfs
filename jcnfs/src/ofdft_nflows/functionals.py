@@ -22,6 +22,12 @@ def _kinetic(name: str = 'TF'):
     elif name.lower() == 'k' or name.lower() == 'kinetic':
         def wrapper(*args):
             return kinetic(*args)
+    elif name.lower() == 'tf-w' or name.lower() == 'thomas_fermi_weizsacker':
+        def wrapper(*args):
+            return thomas_fermi(*args) + weizsacker(*args)
+    elif name.lower() == 'tfw_1d' or name.lower() == 'thomas_fermi_weizsacker_1d':
+        def wrapper(*args): 
+            return thomas_fermi_1D(*args) + weizsacker(*args)
     return wrapper
 
 @jit
@@ -141,15 +147,18 @@ def _exchange_correlation(name: str = 'XC'):
     if name.lower() == 'xc_1d' or name.lower() == 'exchange_correlation_1d':
         def wrapper(*args):
             return exchange_correlation_one_dimensional(*args)
-    if name.lower() == 'vwn_c_e' or name.lower() == 'correlation_vwn_c_e': 
+    if name.lower() == 'vwn_c' or name.lower() == 'correlation_vwn_c': 
         def wrapper(*args):
             return correlation_vwn_c_e(*args) 
-    if name.lower() == 'pw92_c_e' or name.lower() == 'correlation_pw92_c_e': 
+    if name.lower() == 'pw92_c' or name.lower() == 'correlation_pw92_c': 
         def wrapper(*args):
-            return correlation_pw92_c_e(*args) 
-    if name.lower() == 'b88_x_e' or name.lower() == 'exchange_b88_x_e': 
+            return correlation_pw92_c(*args) 
+    if name.lower() == 'b88_x' or name.lower() == 'exchange_b88_x': 
         def wrapper(*args):
-            return b88_x_e(*args)
+            return b88_x(*args)
+    if name.lower() == 'lda_w_b88_x_e': 
+        def wrapper(*args): 
+            return lda(*args) + b88_x(*args)
     return wrapper
 
 @jit
@@ -221,7 +230,7 @@ def exchange_correlation_one_dimensional(den:Array, score:Array, Ne:int) -> jax.
     return Ne*(f1 + f2)
 
 @jit 
-def correlation_vwn_c_e(den: Array, Ne:int) -> jax.Array:
+def correlation_vwn_c(den: Array, Ne:int) -> jax.Array:
     r"""
     VWN correlation functional
     See original paper eq 4.4 in https://cdnsciencepub.com/doi/abs/10.1139/p80-159
@@ -282,7 +291,7 @@ def correlation_vwn_c_e(den: Array, Ne:int) -> jax.Array:
     return e_correlation
 
 @jit 
-def correlation_pw92_c_e(den: Array, Ne:int) -> jax.Array:
+def correlation_pw92_c(den: Array, Ne:int) -> jax.Array:
     """
     PW92 correlation functional
     See eq 10 in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.45.13244
@@ -329,7 +338,7 @@ def correlation_pw92_c_e(den: Array, Ne:int) -> jax.Array:
     return e_correlation
 
 @jit 
-def b88_x_e(den: Array, score: Array,Ne: int) -> jax.Array : 
+def b88_x(den: Array, score: Array,Ne: int) -> jax.Array : 
     r"""
     B88 exchange functional
 
@@ -387,10 +396,10 @@ def b88_x_e(den: Array, score: Array,Ne: int) -> jax.Array :
 # HARTREE FUNCTIONALS
 # ------------------------------------------------------------------------------------------------------------
 def _hartree(name: str = 'HP'):
-    if name.lower() == 'coulomb_potential' or name.lower() == 'coulomb':
+    if name.lower() == 'hp' or name.lower() == 'coulomb':
         def wrapper(*args):
-            return Hartree_potential(*args)
-    elif name.lower() == 'soft_coulomb' or name.lower() == 'softc':
+            return coulomb_potential(*args)
+    elif name.lower() == 'sc' or name.lower() == 'softc':
         def wrapper(*args): 
             return soft_coulomb(*args)
     elif name.lower() == 'hartree_MT' or name.lower() == 'hartree_mt':
@@ -459,10 +468,10 @@ def Hartree_potential_MT(x: Array, xp: Array, Ne: int, alpha=0.5) -> jax.Array:
 # EXTERNAL FUNCTIONALS
 # ------------------------------------------------------------------------------------------------------------
 def _nuclear(name: str = 'NP'):
-    if name.lower() == 'nuclear_potential' or name.lower() == 'nuclear':
+    if name.lower() == 'np' or name.lower() == 'nuclear_potential':
         def wrapper(*args):
-            return Nuclei_potential(*args)
-    elif name.lower() == 'nuclear_potential_1d' or name.lower() == 'nuclear_z_alpha_z_beta':
+            return nuclear_potential(*args)
+    elif name.lower() == 'np_1d' or name.lower() == 'nuclear_z_alpha_z_beta':
         def wrapper(*args):
             return attraction(*args)
     return wrapper
